@@ -1,0 +1,67 @@
+1
+00:00:00,240 --> 00:00:07,200
+Welcome to the Silicon Pulse, your weekly deep dive into the world of artificial intelligence and machine learning.
+
+2
+00:00:07,200 --> 00:00:13,120
+I'm your host Ryan, and today we have a fascinating episode lined up for you.
+
+3
+00:00:13,120 --> 00:00:16,480
+Today we're talking about something truly exciting.
+
+4
+00:00:16,480 --> 00:00:19,920
+Running large language models right on your laptop.
+
+5
+00:00:19,920 --> 00:00:25,040
+No cloud, no API calls, just pure local inference.
+
+6
+00:00:25,040 --> 00:00:29,280
+Apple Silicon has completely changed the game here.
+
+7
+00:00:29,280 --> 00:00:30,640
+Think about it.
+
+8
+00:00:30,640 --> 00:00:38,560
+Just two years ago, running a 7 billion parameter model locally would have been unthinkable for most developers.
+
+9
+00:00:38,560 --> 00:00:46,400
+Now, with frameworks like MLX, optimized specifically for Apple's unified memory architecture.
+
+10
+00:00:46,400 --> 00:00:51,120
+You can run these models at incredible speeds on a MacBook.
+
+11
+00:00:51,120 --> 00:00:54,480
+And it's not just text models.
+
+12
+00:00:54,480 --> 00:01:05,520
+We're now seeing text to speech, speech recognition, image generation, all running locally with remarkable quality.
+
+13
+00:01:05,520 --> 00:01:11,360
+The democratization of AI is happening right before our eyes.
+
+14
+00:01:11,360 --> 00:01:14,720
+That's all for today's episode of the Silicon Pulse.
+
+15
+00:01:14,720 --> 00:01:18,640
+If you enjoyed this, make sure to subscribe and leave a review.
+
+16
+00:01:18,640 --> 00:01:25,360
+Until next time, keep experimenting, keep building, and keep pushing the boundaries of what's possible.
+
+17
+00:01:25,360 --> 00:01:26,960
+See you next week.

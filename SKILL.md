@@ -349,6 +349,21 @@ Any format supported by ffmpeg: WAV, MP3, M4A, FLAC, OGG, OPUS, WMA, AAC, WebM, 
 - **Poor accuracy**: Try beam search (`--decoding beam --beam-size 5`), or use a different engine
 - **Long audio files**: Parakeet handles hours of audio natively. VibeVoice handles up to 60 minutes
 
+## Test Fixtures
+
+Two reference transcripts are included for testing and comparing engines:
+
+| File | Source | Language | Notes |
+|------|--------|----------|-------|
+| `test-fixtures/podcast_episode_reference.srt` | TTS-generated podcast (Qwen3-TTS) | English | Clean synthetic speech, ~87s |
+| `test-fixtures/Kozik_a_deda_reference.md` | Archival Czech radio recording | Czech | ~24min, two elderly speakers (František Kožík + Josef Lukeš), noisy |
+
+**Test audio locations:**
+- English: `~/gitrepos/x-experiments/podcast-test/output/podcast_episode.wav`
+- Czech: `~/Library/CloudStorage/OneDrive-Personal/0 Documents/1. Big writing projects/Czech Language Project/Y Misc/Na poslouchání/O pohádkové babičce/Kozik a deda.mp3`
+
+Use these to compare engines or verify new model downloads produce equivalent or better results.
+
 ## Related Skills
 
 - **text-to-speech**: Companion skill for audio generation (TTS) using Qwen3-TTS via mlx-audio
