@@ -15,7 +15,7 @@ description: |
 
 # Speech-to-Text (Local ASR on MLX)
 
-Transcribe audio files locally on Apple Silicon using NVIDIA Parakeet (via parakeet-mlx) or Mistral Voxtral (via mlx-audio). Supports time-coded output, speaker diarization, and Claude-powered transcript cleanup.
+Transcribe audio files locally on Apple Silicon using NVIDIA Parakeet (via parakeet-mlx), OpenAI Whisper, or Mistral Voxtral (via mlx-audio). Supports time-coded output, speaker diarization, and Claude-powered transcript cleanup.
 
 ## Prerequisites
 
@@ -25,7 +25,8 @@ Ensure the environment is set up. Create a venv with the required packages:
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-pip install parakeet-mlx mlx-audio
+pip install parakeet-mlx
+pip install git+https://github.com/Blaizzy/mlx-audio.git  # v0.3.2+ needed for Whisper/Voxtral Realtime
 ```
 
 Also ensure ffmpeg is installed: `brew install ffmpeg`
@@ -58,12 +59,13 @@ parakeet-mlx audio.wav --output-format all --output-dir ./output  # txt, srt, vt
 | Engine | Package | Best For | Diarization |
 |--------|---------|----------|-------------|
 | **Parakeet v3** | `parakeet-mlx` | English + 25 EU languages, fastest (~110x RT), most accurate (6% WER) | No (add separately) |
+| **Whisper Large V3 Turbo** | `mlx-audio` | Best non-English accuracy (99 languages), excellent Czech (~9x RT) | No |
 | **Parakeet v2** | `parakeet-mlx` | English only, slightly better English accuracy | No (add separately) |
-| **Voxtral Mini 3B** | `mlx-audio` | 13 languages including Asian languages, good quality | No |
-| **Voxtral Realtime 4B** | `mlx-audio` | Streaming/realtime transcription | No |
+| **Voxtral Realtime 4B** | `mlx-audio` | Streaming/realtime, 13 languages (not Czech), ~2x RT | No |
+| ~~Voxtral Mini 3B~~ | `mlx-audio` | **BROKEN** — corrupted MLX conversion, produces only `<unk>` | No |
 | **VibeVoice-ASR** | `mlx-audio` | Built-in speaker diarization + timestamps in one pass | **Yes (built-in)** |
 
-**Default recommendation:** Use **Parakeet v3** for most transcription. Use **VibeVoice-ASR** when you need speaker diarization.
+**Default recommendation:** Use **Parakeet v3** for English/European languages. Use **Whisper Large V3 Turbo** when you need the widest language coverage or best non-English accuracy. Use **VibeVoice-ASR** when you need speaker diarization.
 
 ### 2. Basic Transcription with Parakeet (Default)
 
@@ -104,9 +106,35 @@ for word in result.words:
     print(f"  [{word.start:.2f}s] {word.text}")
 ```
 
-### 3. Transcription with Speaker Diarization
+### 3. Transcription with Whisper
 
-#### Option A: VibeVoice-ASR (Recommended — Single Model, MLX-native)
+OpenAI Whisper Large V3 Turbo provides the widest language coverage (99 languages) and excellent non-English accuracy. Slower than Parakeet (~9x realtime vs ~110x) but produces higher-quality transcripts for non-English audio.
+
+**Important:** Use the `-asr-fp16` model variant — the plain `whisper-large-v3-turbo` is missing processor files needed by mlx-audio.
+
+#### CLI
+
+```bash
+python -m mlx_audio.stt.generate \
+  --model mlx-community/whisper-large-v3-turbo-asr-fp16 \
+  --audio audio.wav \
+  --verbose
+```
+
+#### Python
+
+```python
+#!/usr/bin/env python3
+from mlx_audio.stt.utils import load
+
+model = load("mlx-community/whisper-large-v3-turbo-asr-fp16")
+result = model.generate(audio="audio.wav")
+print(result.text)
+```
+
+### 4. Transcription with Speaker Diarization
+
+#### Option A: VibeVoice-ASR (Recommended -- Single Model, MLX-native)
 
 Microsoft's VibeVoice-ASR (9B parameters) does transcription AND diarization in a single pass. Best for meetings, interviews, and multi-speaker audio.
 
@@ -179,38 +207,13 @@ print()
 
 **Note:** Sortformer supports up to 4 speakers and is language-agnostic. It's much lighter than VibeVoice-ASR.
 
-### 4. Transcription with Voxtral
-
-#### Voxtral Mini 3B (Batch)
-
-Good for non-European languages (Chinese, Hindi, Arabic, Japanese, Korean) where Parakeet v3 has no coverage.
-
-**Known issues (as of mlx-audio 0.3.1 + transformers 5.0rc3):**
-- `mlx-community/Voxtral-Mini-3B-2507-bf16` has corrupted weights (~half the LLM layers are zeros). Produces only `<unk>` tokens. Do not use until a fixed conversion is available.
-- Requires monkey-patches for `ProcessorMixin` serialization bugs in transformers 5.x.
-- Requires `pip install mistral-common torch` (CPU-only torch suffices).
-- Max audio length per chunk is ~30 seconds (1500 mel frames after encoder). Longer audio is auto-chunked but chunks lack temporal context.
-
-```python
-#!/usr/bin/env python3
-from mlx_audio.stt.utils import load
-
-model = load("mlx-community/Voxtral-Mini-3B-2507-bf16")
-result = model.generate(audio="audio.wav", max_tokens=4096)
-print(result.text)
-```
-
-CLI:
-```bash
-python -m mlx_audio.stt.generate \
-  --model mlx-community/Voxtral-Mini-3B-2507-bf16 \
-  --audio audio.wav \
-  --verbose
-```
+### 5. Transcription with Voxtral
 
 #### Voxtral Realtime 4B (Streaming)
 
-For realtime microphone transcription or low-latency needs.
+Voxtral Realtime 4B (Voxtral 2, Feb 2026, Apache 2.0) supports 13 languages: English, French, German, Spanish, Italian, Portuguese, Dutch, Russian, Chinese, Japanese, Korean, Arabic, Hindi. Runs at ~2x realtime in 4-bit quantization (~3GB memory).
+
+**Note:** Czech is NOT in the supported language list. Voxtral Realtime produces mixed Czech/Russian transliteration for Czech audio. Use Parakeet v3 or Whisper for Czech.
 
 ```bash
 pip install voxmlx
@@ -220,14 +223,28 @@ voxmlx
 voxmlx --audio audio.wav
 ```
 
-Or via mlx-audio:
+Or via mlx-audio (requires v0.3.2+):
 ```bash
 python -m mlx_audio.stt.generate \
   --model mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit \
   --audio audio.wav
 ```
 
-### 5. Generate Time-Coded Transcript File
+Python:
+```python
+#!/usr/bin/env python3
+from mlx_audio.stt.utils import load
+
+model = load("mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit")
+result = model.generate("audio.wav", max_tokens=8192)
+print(result.text)
+```
+
+#### Voxtral Mini 3B (Batch) -- BROKEN
+
+**Do not use.** `mlx-community/Voxtral-Mini-3B-2507-bf16` has corrupted weights (~half the LLM layers are zeros). Produces only `<unk>` tokens. This is a broken mlx-community conversion, not fixable locally. Wait for a corrected conversion or use Whisper for broad language coverage instead.
+
+### 6. Generate Time-Coded Transcript File
 
 Write a Python script to produce SRT or VTT from any engine:
 
@@ -270,7 +287,7 @@ if __name__ == "__main__":
     transcribe_to_srt(audio)
 ```
 
-### 6. Claude Cleanup Pass
+### 7. Claude Cleanup Pass
 
 After generating a raw transcript, use Claude to produce a clean, readable version. This is the standard two-step pipeline:
 
@@ -321,22 +338,25 @@ Any format supported by ffmpeg: WAV, MP3, M4A, FLAC, OGG, OPUS, WMA, AAC, WebM, 
 
 ## Model Comparison
 
-| Model | Size | Speed (M4) | Languages | Memory | Diarization |
-|-------|------|------------|-----------|--------|-------------|
-| Parakeet v3 | 0.6B | ~110x RT | 25 EU languages | ~2GB | No |
-| Parakeet v2 | 0.6B | ~110x RT | English only | ~2GB | No |
-| Sortformer v2.1 | small | fast | Language-agnostic | ~1GB | Yes (up to 4 speakers) |
-| VibeVoice-ASR | 9B | ~5-10x RT | Multi | ~18GB | Yes (built-in) |
-| Voxtral Mini 3B | 3B | ~15-20x RT | 13 languages | ~9GB (bf16) | No |
-| Voxtral Realtime 4B | 4B | realtime | 13 languages | ~3GB (4bit) | No |
+| Model | Size | Speed (M3 Pro) | Languages | Memory | Diarization | Status |
+|-------|------|---------------|-----------|--------|-------------|--------|
+| Parakeet v3 | 0.6B | ~110x RT | 25 EU languages | ~2GB | No | Tested, good |
+| Whisper Large V3 Turbo | 0.8B | ~9x RT | 99 languages | ~3GB | No | Tested, excellent |
+| Parakeet v2 | 0.6B | ~110x RT | English only | ~2GB | No | Tested |
+| Sortformer v2.1 | small | fast | Language-agnostic | ~1GB | Yes (up to 4 speakers) | Untested |
+| VibeVoice-ASR | 9B | ~5-10x RT | Multi | ~18GB | Yes (built-in) | Untested |
+| Voxtral Realtime 4B | 4B | ~2x RT | 13 languages | ~3GB (4bit) | No | Tested, poor Czech |
+| ~~Voxtral Mini 3B~~ | 3B | N/A | 13 languages | ~9GB (bf16) | No | BROKEN |
 
 ## Performance Notes
 
 - **Parakeet v3** is the fastest and most accurate for English/European languages. A 1-hour file transcribes in ~30-60 seconds on M3/M4.
+- **Whisper Large V3 Turbo** is the best all-rounder for non-English languages. ~9x realtime on M3 Pro (24min Czech audio in 159s). Excellent accuracy, proper punctuation, good handling of archaic/dialectal speech.
+- **Voxtral Realtime 4B** is slow (~2x RT) and only supports 13 languages. Czech audio produced mixed Czech/Russian transliteration. Best for its supported languages only.
 - **VibeVoice-ASR** is heavy (9B/18GB) but does everything in one pass. Best for meetings where you need speaker labels.
 - **Sortformer** is lightweight and can be paired with Parakeet for diarization without the memory cost of VibeVoice.
-- **Voxtral** fills the gap for Asian/non-European languages where Parakeet has no coverage.
 - First model load downloads from HuggingFace. Subsequent loads use cache at `~/.cache/huggingface/hub/`.
+- **mlx-audio version:** Install v0.3.2+ from GitHub (`pip install git+https://github.com/Blaizzy/mlx-audio.git`). PyPI v0.3.1 lacks Voxtral Realtime and Whisper ASR support.
 
 ## Output Formats
 
@@ -357,12 +377,14 @@ Any format supported by ffmpeg: WAV, MP3, M4A, FLAC, OGG, OPUS, WMA, AAC, WebM, 
 
 ## Test Fixtures
 
-Two reference transcripts are included for testing and comparing engines:
+Reference transcripts and engine outputs are included for testing and comparing engines:
 
 | File | Source | Language | Notes |
 |------|--------|----------|-------|
 | `test-fixtures/podcast_episode_reference.srt` | TTS-generated podcast (Qwen3-TTS) | English | Clean synthetic speech, ~87s |
-| `test-fixtures/Kozik_a_deda_reference.md` | Archival Czech radio recording | Czech | ~24min, two elderly speakers (František Kožík + Josef Lukeš), noisy |
+| `test-fixtures/Kozik_a_deda_reference.md` | Archival Czech radio recording | Czech | ~24min, canonical reference transcript |
+| `test-fixtures/Kozik_a_deda_eval.md` | Evaluation criteria | Czech | Scoring rubric for Czech transcript comparison |
+| `test-fixtures/Kozik_a_deda_whisper_v3_turbo.md` | Whisper Large V3 Turbo output | Czech | Excellent quality, 159s (~9x RT) |
 
 **Test audio locations:**
 - English: `~/gitrepos/x-experiments/podcast-test/output/podcast_episode.wav`
