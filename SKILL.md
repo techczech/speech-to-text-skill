@@ -185,6 +185,12 @@ print()
 
 Good for non-European languages (Chinese, Hindi, Arabic, Japanese, Korean) where Parakeet v3 has no coverage.
 
+**Known issues (as of mlx-audio 0.3.1 + transformers 5.0rc3):**
+- `mlx-community/Voxtral-Mini-3B-2507-bf16` has corrupted weights (~half the LLM layers are zeros). Produces only `<unk>` tokens. Do not use until a fixed conversion is available.
+- Requires monkey-patches for `ProcessorMixin` serialization bugs in transformers 5.x.
+- Requires `pip install mistral-common torch` (CPU-only torch suffices).
+- Max audio length per chunk is ~30 seconds (1500 mel frames after encoder). Longer audio is auto-chunked but chunks lack temporal context.
+
 ```python
 #!/usr/bin/env python3
 from mlx_audio.stt.utils import load
