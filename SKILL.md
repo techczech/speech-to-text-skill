@@ -63,7 +63,7 @@ parakeet-mlx audio.wav --output-format all --output-dir ./output  # txt, srt, vt
 | **Parakeet v2** | `parakeet-mlx` | English only, slightly better English accuracy | No (add separately) |
 | **Voxtral Realtime 4B** | `mlx-audio` | Streaming/realtime, 13 languages (not Czech), ~2x RT | No |
 | ~~Voxtral Mini 3B~~ | `mlx-audio` | **BROKEN** — corrupted MLX conversion, produces only `<unk>` | No |
-| **VibeVoice-ASR** | `mlx-audio` | Built-in speaker diarization + timestamps in one pass | **Yes (built-in)** |
+| **VibeVoice-ASR (4-bit)** | `mlx-audio` | Built-in speaker diarization + timestamps + hotwords, 50+ languages, ~7x RT | **Yes (built-in)** |
 
 **Default recommendation:** Use **Parakeet v3** for English/European languages. Use **Whisper Large V3 Turbo** when you need the widest language coverage or best non-English accuracy. Use **VibeVoice-ASR** when you need speaker diarization.
 
@@ -136,30 +136,49 @@ print(result.text)
 
 #### Option A: VibeVoice-ASR (Recommended -- Single Model, MLX-native)
 
-Microsoft's VibeVoice-ASR (9B parameters) does transcription AND diarization in a single pass. Best for meetings, interviews, and multi-speaker audio.
+Microsoft's VibeVoice-ASR (7B parameters, MIT licensed) does transcription AND diarization in a single pass with timestamps and speaker IDs. Supports 50+ languages and customized hotwords. Best for meetings, interviews, and multi-speaker audio.
+
+**Use the 4-bit MLX conversion** (`mlx-community/VibeVoice-ASR-4bit`, 5.71GB). The bf16 variant (~17GB) costs more bandwidth and RAM for no real accuracy gain on the MLX-quantized weights.
 
 ```python
 #!/usr/bin/env python3
 from mlx_audio.stt.utils import load
 
-model = load("mlx-community/VibeVoice-ASR-bf16")
-result = model.generate(audio="meeting.wav", max_tokens=8192, temperature=0.0)
+model = load("mlx-community/VibeVoice-ASR-4bit")
+result = model.generate(audio="meeting.wav", max_tokens=16384, temperature=0.0)
 
 # result contains speaker-labeled segments with timestamps
 print(result.text)
 ```
 
-CLI:
+CLI (with JSON output to preserve speaker labels):
 ```bash
 python -m mlx_audio.stt.generate \
-  --model mlx-community/VibeVoice-ASR-bf16 \
+  --model mlx-community/VibeVoice-ASR-4bit \
   --audio meeting.wav \
-  --max-tokens 8192 \
-  --temp 0.0 \
+  --output-path output/meeting \
+  --format json \
+  --max-tokens 16384 \
   --verbose
 ```
 
-**Note:** VibeVoice-ASR is a 9B model (~18GB in bf16). It handles up to 60 minutes of audio. First load downloads from HuggingFace.
+**Hotwords / context:** Pass domain-specific proper nouns or terminology via `--context` to bias the decoder. Useful for names, company-specific jargon, place names, or non-English terms the base model may garble:
+
+```bash
+python -m mlx_audio.stt.generate \
+  --model mlx-community/VibeVoice-ASR-4bit \
+  --audio meeting.wav \
+  --output-path output/meeting \
+  --format json \
+  --context "Kožík, Lukeš, Riegler, Nechálov, Romega" \
+  --max-tokens 16384
+```
+
+**Notes:**
+- Reference: Simon Willison's [27 Apr 2026 writeup](https://simonwillison.net/2026/Apr/27/vibevoice/) on running this on an M5 — 60 min audio in ~9 min (~7× RT).
+- **RAM:** ~18GB resident during generation, but **peaks ~60GB during prefill** for long audio. The model self-reports 30GB; actual is roughly double.
+- **Hard cap:** ~1 hour of audio per invocation. Longer files need splitting with overlapping segments for alignment.
+- **Default `max-tokens=8192`** ≈ 25 min audio. Bump to `16384` for hour-long files or you will silently get a truncated transcript.
 
 #### Option B: Parakeet + Sortformer (Two-Model Pipeline)
 
@@ -344,7 +363,7 @@ Any format supported by ffmpeg: WAV, MP3, M4A, FLAC, OGG, OPUS, WMA, AAC, WebM, 
 | Whisper Large V3 Turbo | 0.8B | ~9x RT | 99 languages | ~3GB | No | Tested, excellent |
 | Parakeet v2 | 0.6B | ~110x RT | English only | ~2GB | No | Tested |
 | Sortformer v2.1 | small | fast | Language-agnostic | ~1GB | Yes (up to 4 speakers) | Untested |
-| VibeVoice-ASR | 9B | ~5-10x RT | Multi | ~18GB | Yes (built-in) | Untested |
+| VibeVoice-ASR (4-bit) | 7B | ~7x RT | 50+ languages | 5.71GB download / ~18GB resident / ~60GB prefill peak | Yes (built-in) | See test fixtures |
 | Voxtral Realtime 4B | 4B | ~2x RT | 13 languages | ~3GB (4bit) | No | Tested, poor Czech |
 | ~~Voxtral Mini 3B~~ | 3B | N/A | 13 languages | ~9GB (bf16) | No | BROKEN |
 
@@ -370,10 +389,12 @@ Any format supported by ffmpeg: WAV, MP3, M4A, FLAC, OGG, OPUS, WMA, AAC, WebM, 
 - **Requires macOS 15+** on Apple Silicon (M1/M2/M3/M4)
 - **ffmpeg needed**: `brew install ffmpeg`
 - **Slow first load**: Models download from HuggingFace (Parakeet ~1.2GB, VibeVoice ~18GB). Set `HF_TOKEN` for faster access
-- **Out of memory with VibeVoice**: Use Parakeet + Sortformer instead (much lighter)
+- **Out of memory with VibeVoice**: VibeVoice 4-bit peaks at ~60GB during prefill on long audio (the model's self-reported 30GB is roughly half the actual). Either use shorter clips, or fall back to Parakeet + Sortformer (much lighter).
+- **Truncated VibeVoice transcript**: The default `max-tokens=8192` ≈ 25 min of audio. Bump to `16384` for hour-long files.
+- **VibeVoice 60-minute cap**: Hard limit per invocation. Split longer files with overlapping segments and merge.
 - **Non-European languages**: Use Voxtral instead of Parakeet
-- **Poor accuracy**: Try beam search (`--decoding beam --beam-size 5`), or use a different engine
-- **Long audio files**: Parakeet handles hours of audio natively. VibeVoice handles up to 60 minutes
+- **Poor accuracy**: Try beam search (`--decoding beam --beam-size 5`), or use a different engine. For VibeVoice, pass `--context "Name1, Name2, ..."` to bias the decoder toward proper nouns.
+- **Long audio files**: Parakeet handles hours of audio natively. VibeVoice handles up to 60 minutes per invocation.
 
 ## Test Fixtures
 
