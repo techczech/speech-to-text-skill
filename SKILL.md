@@ -7,22 +7,29 @@ description: "Transcribe audio locally."
 
 ## First Move
 
-- Choose ASR engine from workflow, then transcribe locally.
-- Full procedure: `references/workflow.md`.
+- Choose engine from `references/engines.md`, then load commands for that engine.
 
 ## Use
 
 - Transcribe audio locally on Apple Silicon.
-- Select Parakeet, Whisper, Voxtral, or diarization path.
-- Write outputs beside the source or requested target folder.
+- Use Parakeet by default for English and European languages.
+- Use Whisper for broad language coverage; use VibeVoice when speaker labels matter.
 
-## Workflow
+## References
 
-1. Read `references/workflow.md` only when this skill triggers.
-2. Follow the relevant section for setup, commands, and output handling.
-3. Keep outputs in the user's target project unless the workflow says otherwise.
+- `references/workflow.md`: choose which reference to load
+- `references/setup.md`: install packages, confirm formats, or use fixtures
+- `references/engines.md`: choose ASR or diarization engine
+- `references/commands.md`: run transcription, diarization, or timestamp recipes
+- `references/cleanup-prompts.md`: clean raw transcripts faithfully
+- `references/troubleshooting.md`: debug model, memory, language, or output issues
+
+## Scripts
+
+- `scripts/parakeet_to_srt.py`: deterministic Parakeet-to-SRT helper
 
 ## Verification
 
-- Check input audio path and ffmpeg availability.
-- Spot-check transcript quality and timestamps.
+- Check audio path, `ffmpeg`, venv, and model cache.
+- Spot-check transcript quality against a few audio segments.
+- For long diarized audio, check truncation and token limits.
