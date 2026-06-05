@@ -240,9 +240,10 @@ Options:
 ### 7. Audio Understanding with Gemma 4 (LiteRT-LM)
 
 **Status (tested 2026-06-05, litert-lm 0.13.1, M4 Max):** text generation works; the audio
-path does NOT — ~30 min per 30s clip even with a warm compile cache, and output is mangled
-channel-control tokens (`<|channel>thought`). macOS support landed in v0.13 (2026-06-03) and
-the Metal audio path is not ready. Keep using Parakeet (§2); for Gemma-4-quality file
+path does NOT — ~30 min per call regardless of clip length (a 4s clip churned 16+ min at 95%
+CPU before being killed; a 30s clip took 32 min warm), and what little output appears is
+mangled channel-control tokens (`<|channel>thought`). The pathology is per-call, not
+per-second-of-audio. macOS support landed in v0.13 (2026-06-03); the Metal audio path is not ready. Keep using Parakeet (§2); for Gemma-4-quality file
 transcription use the Eloquent app (below). Re-test on litert-lm releases after 0.13.x;
 the recipes below are correct per Google's docs and should work once the runtime catches up.
 
