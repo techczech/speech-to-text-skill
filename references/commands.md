@@ -9,6 +9,7 @@ Use this for concrete CLI and Python transcription commands.
   - 4. Transcription with Speaker Diarization
   - 5. Transcription with Voxtral
   - 6. Generate Time-Coded Transcript File
+  - 7. Audio Understanding with Gemma 4 (LiteRT-LM)
 
 ## Quick Start
 
@@ -235,3 +236,76 @@ Options:
 - `audio`: input audio path.
 - `-o, --output`: optional `.srt` output path; default is beside the input file.
 - `--model`: optional Parakeet model ID; default `mlx-community/parakeet-tdt-0.6b-v3`.
+
+### 7. Audio Understanding with Gemma 4 (LiteRT-LM)
+
+**Status (tested 2026-06-05, litert-lm 0.13.1, M4 Max):** text generation works; the audio
+path does NOT — ~30 min per 30s clip even with a warm compile cache, and output is mangled
+channel-control tokens (`<|channel>thought`). macOS support landed in v0.13 (2026-06-03) and
+the Metal audio path is not ready. Keep using Parakeet (§2); for Gemma-4-quality file
+transcription use the Eloquent app (below). Re-test on litert-lm releases after 0.13.x;
+the recipes below are correct per Google's docs and should work once the runtime catches up.
+
+Not a bulk transcriber — use when the task is more than ASR: translate speech, answer a
+question about a clip, summarise tone/content, or transcribe+reason in one pass.
+Constraints: **30s max audio per call** (25 tokens/s), 16kHz mono best, engine reloads
+(~6.1GB) on every CLI invocation — chunked long files are slow; prefer Parakeet for those.
+The model is GPU-only: every run needs `--backend gpu`, audio attachments additionally
+need `--audio-backend gpu`. Missing `--backend gpu` fails with
+"Main backend constraint mismatch. Model requires one of [gpu]". First run compiles
+artifacts to a disk cache next to the model; later runs start faster.
+
+#### Setup (once per machine)
+
+```bash
+UV_EXCLUDE_NEWER=$(date -v+1d +%Y-%m-%d) uv tool install litert-lm   # released <7d ago; uv gate override
+# keep big models on the shared volume:
+mkdir -p ~/local-models/litert-lm-models ~/.litert-lm
+ln -sfn ~/local-models/litert-lm-models ~/.litert-lm/models
+# hf-xet stalls on some networks — remove from the tool venv:
+uv pip uninstall --python ~/.local/share/uv/tools/litert-lm/bin/python hf_xet
+# model (~6.5GB, resumes on failure):
+HF_HUB_DOWNLOAD_TIMEOUT=30 litert-lm import \
+  --from-huggingface-repo=litert-community/gemma-4-12B-it-litert-lm \
+  gemma-4-12B-it.litertlm gemma4-12b
+```
+
+#### Transcribe a clip (≤30s)
+
+```bash
+ffmpeg -y -i input.m4a -ac 1 -ar 16000 -t 30 clip.wav
+litert-lm run gemma4-12b --backend gpu --audio-backend gpu --attachment clip.wav \
+  --prompt "Transcribe this audio verbatim. Use digits for numbers. Output the transcript only."
+```
+
+#### Translate speech directly
+
+```bash
+litert-lm run gemma4-12b --backend gpu --audio-backend gpu --attachment clip.wav \
+  --prompt "Transcribe this audio, then translate it into English. Format: Original: ... / English: ..."
+```
+
+#### Ask about a clip
+
+```bash
+litert-lm run gemma4-12b --backend gpu --audio-backend gpu --attachment clip.wav \
+  --prompt "What is the speaker's tone and main point? One sentence each."
+```
+
+#### Long file (chunked — slow, engine reloads per chunk)
+
+```bash
+ffmpeg -y -i input.mp3 -ac 1 -ar 16000 -f segment -segment_time 28 /tmp/g4chunk_%03d.wav
+for f in /tmp/g4chunk_*.wav; do
+  litert-lm run gemma4-12b --backend gpu --audio-backend gpu --attachment "$f" \
+    --prompt "Transcribe this audio verbatim. Output the transcript only."
+done
+```
+
+For plain transcription of anything over ~2 minutes, Parakeet (§2) is faster and better.
+
+#### Related local Gemma 4 audio options
+
+- **Eloquent.app** (Google, installed via App Store): GUI transcription of audio/video files
+  + system-wide dictation with Gemma 4 12B; zero setup, not scriptable; models app-internal.
+- **video-analysis skill**: visual lane for the same clips; pair per its Recipe 4.

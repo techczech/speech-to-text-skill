@@ -1,6 +1,6 @@
 # Speech-to-Text Engine Selection
 
-Use this before choosing Parakeet, Whisper, VibeVoice, Sortformer, or Voxtral.
+Use this before choosing Parakeet, Whisper, VibeVoice, Sortformer, Voxtral, or Gemma 4.
 
 ## Contents
 - Workflow
@@ -18,8 +18,9 @@ Use this before choosing Parakeet, Whisper, VibeVoice, Sortformer, or Voxtral.
 - **Voxtral Realtime 4B**: package `mlx-audio`; streaming/realtime; 13 languages, not Czech; ~2x RT; no built-in diarization.
 - **Voxtral Mini 3B**: package `mlx-audio`; broken MLX conversion; produces only `<unk>`; do not use.
 - **VibeVoice-ASR 4-bit**: package `mlx-audio`; built-in speaker diarization, timestamps, hotwords; 50+ languages; ~7x RT.
+- **Gemma 4 12B (LiteRT-LM)**: tool `litert-lm` (uv tool); audio *understanding* (speech translation, audio Q&A, tone/content) rather than bulk ASR; 30s/clip limit (25 tokens/s of audio). **Tested 2026-06-05: audio path not usable on macOS** (~30 min/call, channel-token output bug in 0.13.1) — text-only works. Do not route audio here until a fixed release; see commands §7 status note.
 
-**Default recommendation:** Use **Parakeet v3** for English/European languages. Use **Whisper Large V3 Turbo** when you need the widest language coverage or best non-English accuracy. Use **VibeVoice-ASR** when you need speaker diarization.
+**Default recommendation:** Use **Parakeet v3** for English/European languages. Use **Whisper Large V3 Turbo** when you need the widest language coverage or best non-English accuracy. Use **VibeVoice-ASR** when you need speaker diarization. **Gemma 4** is the future option for more-than-transcription tasks (translate speech, ask about a clip) but its macOS audio runtime is not usable as of 2026-06-05 — see commands §7; meanwhile the Eloquent app covers Gemma-4-quality file transcription interactively.
 
 ## Model Comparison
 
@@ -30,6 +31,7 @@ Use this before choosing Parakeet, Whisper, VibeVoice, Sortformer, or Voxtral.
 - VibeVoice-ASR 4-bit: 7B; ~7x RT; 50+ languages; 5.71 GB download, ~18 GB resident, ~60 GB prefill peak; built-in diarization; see test fixtures.
 - Voxtral Realtime 4B: 4B; ~2x RT; 13 languages; ~3 GB memory at 4-bit; no diarization; tested poor Czech.
 - Voxtral Mini 3B: broken; do not use.
+- Gemma 4 12B LiteRT: 12B; 6.5 GB download to `~/local-models/litert-lm-models` (symlinked from `~/.litert-lm/models`); 30s audio max per call; no diarization; audio understanding + translation, not bulk ASR.
 
 ## Performance Notes
 

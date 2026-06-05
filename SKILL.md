@@ -14,6 +14,7 @@ description: "Transcribe audio locally."
 - Transcribe audio locally on Apple Silicon.
 - Use Parakeet by default for English and European languages.
 - Use Whisper for broad language coverage; use VibeVoice when speaker labels matter.
+- Gemma 4 (LiteRT-LM) for more-than-transcription tasks is documented but NOT yet usable on macOS (tested 2026-06-05) — check commands §7 status before routing audio there; Eloquent app is the working Gemma 4 option (GUI).
 
 ## References
 
