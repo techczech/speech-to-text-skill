@@ -12,9 +12,10 @@ description: "Transcribe audio locally."
 ## Use
 
 - Transcribe audio locally on Apple Silicon.
-- Use Parakeet by default for English and European languages.
-- Use Whisper for broad language coverage; use VibeVoice when speaker labels matter.
-- Gemma 4 (LiteRT-LM) for more-than-transcription tasks is documented but NOT yet usable on macOS (tested 2026-06-05) — check commands §7 status before routing audio there; Eloquent app is the working Gemma 4 option (GUI).
+- Use **Qwen3-ASR** (`mlx-qwen3-asr`) when transcript quality matters and you can supply a term list — accuracy leader + `--context` biasing kills proper-noun errors (commands §8).
+- Use Parakeet for raw speed on English/European when names don't matter.
+- Use Whisper for broad language coverage; use VibeVoice or Qwen3-ASR `--diarize` when speaker labels matter (diarization caveat in §8: Mac torchcodec broken, use Sortformer on a CUDA box).
+- Gemma 4 (LiteRT-LM) audio is NOT usable on macOS (re-tested 2026-07-23 on 0.14.0, same hang) — do not route audio there; Eloquent app is the GUI fallback.
 
 ## References
 

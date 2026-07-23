@@ -12,15 +12,28 @@ Use this before choosing Parakeet, Whisper, VibeVoice, Sortformer, Voxtral, or G
 
 ### 1. Choose a Transcription Engine
 
-- **Parakeet v3**: package `parakeet-mlx`; best for English plus 25 European languages; fastest (~110x RT); most accurate (~6% WER); no built-in diarization.
+- **Qwen3-ASR 1.7B**: package `mlx-qwen3-asr`; **most accurate** open ASR (4.25% WER, #1 HF Open
+  ASR Leaderboard, beats Parakeet ~6% and Whisper-lv3 ~7.4%); ~3.6-4.8x RT with `--timestamps`;
+  30 languages + 22 Chinese dialects. **Killer feature: `--context "Technical terms: ..."`** biases
+  decoding toward supplied vocabulary — feed it the domain's own names/jargon and proper-noun errors
+  drop sharply (tested 2026-07-23: lava-blades->Lovable, Timik->Kimi, Norwick->Norvig, VGX->DGX).
+  Also `--diarize`, `--forced-aligner`. Use when transcript quality matters and you have a term list
+  (slides, glossary). Word-level timestamps via native MLX aligner. 0.6B variant is faster/lighter.
+- **Parakeet v3**: package `parakeet-mlx`; best for English plus 25 European languages; fastest (~110x RT); most accurate (~6% WER); no built-in diarization. Faster than Qwen3-ASR but no context biasing — worse on dense proper nouns.
 - **Whisper Large V3 Turbo**: package `mlx-audio`; best non-English accuracy across 99 languages; excellent Czech; ~9x RT; no built-in diarization.
 - **Parakeet v2**: package `parakeet-mlx`; English-only; slightly better English accuracy; no built-in diarization.
 - **Voxtral Realtime 4B**: package `mlx-audio`; streaming/realtime; 13 languages, not Czech; ~2x RT; no built-in diarization.
 - **Voxtral Mini 3B**: package `mlx-audio`; broken MLX conversion; produces only `<unk>`; do not use.
 - **VibeVoice-ASR 4-bit**: package `mlx-audio`; built-in speaker diarization, timestamps, hotwords; 50+ languages; ~7x RT.
-- **Gemma 4 12B (LiteRT-LM)**: tool `litert-lm` (uv tool); audio *understanding* (speech translation, audio Q&A, tone/content) rather than bulk ASR; 30s/clip limit (25 tokens/s of audio). **Tested 2026-06-05: audio path not usable on macOS** (~30 min/call, channel-token output bug in 0.13.1) — text-only works. Do not route audio here until a fixed release; see commands §7 status note.
+- **Gemma 4 12B (LiteRT-LM)**: tool `litert-lm` (uv tool); audio *understanding* (speech translation, audio Q&A, tone/content) rather than bulk ASR; 30s/clip limit (25 tokens/s of audio). **Re-tested 2026-07-23 on 0.14.0: STILL not usable on macOS** — 20+ min of 99% CPU on a 20s clip, no output, same pathology as 0.13.1. QAT checkpoints don't fix it (memory, not the audio path); Gemma-4 audio gives no timestamps/diarization anyway. llama.cpp now has native Gemma-4 audio (PR #21421) but independent tests report looping/hallucination. Do not route audio here.
 
-**Default recommendation:** Use **Parakeet v3** for English/European languages. Use **Whisper Large V3 Turbo** when you need the widest language coverage or best non-English accuracy. Use **VibeVoice-ASR** when you need speaker diarization. **Gemma 4** is the future option for more-than-transcription tasks (translate speech, ask about a clip) but its macOS audio runtime is not usable as of 2026-06-05 — see commands §7; meanwhile the Eloquent app covers Gemma-4-quality file transcription interactively.
+**Default recommendation:** Use **Qwen3-ASR 1.7B** when transcript quality matters and you can
+supply a term list (`--context`) — it is the accuracy leader and the only local engine with context
+biasing. Use **Parakeet v3** when you need raw speed and names don't matter. Use **Whisper Large V3
+Turbo** for the widest language coverage / best non-English. Use **VibeVoice-ASR** or Qwen3-ASR
+`--diarize` when you need speaker labels (but see the diarization caveat in commands §8). **Gemma 4**
+audio remains unusable on macOS as of 2026-07-23; the Eloquent app covers Gemma-4-quality file
+transcription interactively if ever needed.
 
 ## Model Comparison
 

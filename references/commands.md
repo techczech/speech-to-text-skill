@@ -310,3 +310,39 @@ For plain transcription of anything over ~2 minutes, Parakeet (§2) is faster an
 - **Eloquent.app** (Google, installed via App Store): GUI transcription of audio/video files
   + system-wide dictation with Gemma 4 12B; zero setup, not scriptable; models app-internal.
 - **video-analysis skill**: visual lane for the same clips; pair per its Recipe 4.
+
+### 8. Qwen3-ASR with context biasing (mlx-qwen3-asr) — accuracy leader
+
+Install (skill venv). NOTE: the venv's `pip`/activate may have a stale shebang after a repo move —
+call it as `python -m`:
+
+```bash
+V=~/gitrepos/05_skills/speech-to-text/venv
+$V/bin/python -m pip install "mlx-qwen3-asr[aligner,diarize]"
+```
+
+Transcribe with a term list — the whole point. Wrap terms as `"Technical terms: a, b, c"`
+(a bare space/comma-joined list REGRESSES accuracy; the prefix form gives ~2x WER improvement,
+per TypeWhisper #321):
+
+```bash
+$V/bin/python -m mlx_qwen3_asr audio.wav \
+  --model Qwen/Qwen3-ASR-1.7B \
+  --context "Technical terms: Claude Code, Codex, Qwen, Kimi, Lovable, Andreessen Horowitz" \
+  --timestamps --output-format json --language English
+```
+
+- `--model` default is 0.6B (faster, ~1.2GB); `Qwen/Qwen3-ASR-1.7B` (~4.4GB) is more accurate.
+- Output JSON: word-level `segments` [{text,start,end}] in SECONDS + a `chunks` list + `text`.
+  Group words into sentence segments and convert to ms for TalkWeaver's transcript schema.
+- Build the context string from the domain's own material. For TalkWeaver, each talk's
+  `structure.json` (slide titles/markdown/OCR) is the ideal source — see the York re-transcription
+  runner referenced in `_COORDINATION/presentations/_TASK-LOG/2026-07-23-york-transcript-cleaning.md`.
+- ~3.6-4.8x realtime on M-series with `--timestamps`.
+
+**Diarization caveat (macOS, 2026-07-23):** `--diarize` uses gated
+`pyannote/speaker-diarization-community-1` (accept terms + HF_TOKEN) AND depends on `torchcodec`,
+which fails to load `libavutil.56.dylib` against Homebrew ffmpeg 7.x — it finds the right speaker
+COUNT but thrashes word-level labels (timelines misalign). Do not ship Mac diarization as-is. Clean
+route: NeMo Sortformer on a CUDA box (DGX Spark, `~/asr/.venv2`; not gated, no torchcodec) — merge
+speaker turns onto ASR segments by time overlap.
