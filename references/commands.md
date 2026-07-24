@@ -340,9 +340,30 @@ $V/bin/python -m mlx_qwen3_asr audio.wav \
   runner referenced in `_COORDINATION/presentations/_TASK-LOG/2026-07-23-york-transcript-cleaning.md`.
 - ~3.6-4.8x realtime on M-series with `--timestamps`.
 
-**Diarization caveat (macOS, 2026-07-23):** `--diarize` uses gated
-`pyannote/speaker-diarization-community-1` (accept terms + HF_TOKEN) AND depends on `torchcodec`,
-which fails to load `libavutil.56.dylib` against Homebrew ffmpeg 7.x — it finds the right speaker
-COUNT but thrashes word-level labels (timelines misalign). Do not ship Mac diarization as-is. Clean
-route: NeMo Sortformer on a CUDA box (DGX Spark, `~/asr/.venv2`; not gated, no torchcodec) — merge
-speaker turns onto ASR segments by time overlap.
+#### Diarization on macOS — WORKS, but needs two fixes (solved 2026-07-24)
+
+`--diarize` uses gated `pyannote/speaker-diarization-community-1`: accept the terms at
+`hf.co/pyannote/speaker-diarization-community-1` once, then the stored HF token is enough.
+
+**Fix 1 — torchcodec must match torch, and needs a matching ffmpeg.** Symptom: a long
+`libtorchcodec loading traceback`, ending on `core4` / `libavutil.56`. That trailing error is a red
+herring — torchcodec probes ffmpeg 8..4 in turn and reports the last failure. Read the WHOLE
+traceback: if `core8`/`core7` fail with `Symbol not found: _torch_dtype_float4_e2m1fn_x2`, the real
+fault is a **torch/torchcodec version mismatch**, not ffmpeg.
+
+```bash
+# pair torchcodec to the installed torch (0.10 <-> torch 2.10; see pytorch/torchcodec matrix)
+$V/bin/python -m pip install "torchcodec==0.10.0"
+brew install ffmpeg@7                      # keg-only, coexists with ffmpeg 8; supplies libavutil.59
+DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/opt/ffmpeg@7/lib $V/bin/python -m mlx_qwen3_asr ...
+```
+
+**Fix 2 — smooth the speaker labels.** Raw output assigns speakers per WORD, so single words get
+flipped mid-sentence ("because this *is it*" split across two speakers). Collapse any speaker run
+shorter than ~4 words / ~1.2 s into the neighbouring run. On a York Q&A clip this took 23 bogus
+switches down to 5 real turns and correctly separated an audience question from Dominik's answer.
+Relabel in place — do NOT rebuild word lists by merging and re-sorting, or near-simultaneous words
+get reordered ("quite a bit of" -> "quite bit a of").
+
+Alternative if these fixes ever break: NeMo Sortformer on a CUDA box (DGX Spark, `~/asr/.venv2`) —
+not gated, no torchcodec — merged onto ASR segments by time overlap.

@@ -14,7 +14,7 @@ description: "Transcribe audio locally."
 - Transcribe audio locally on Apple Silicon.
 - Use **Qwen3-ASR** (`mlx-qwen3-asr`) when transcript quality matters and you can supply a term list — accuracy leader + `--context` biasing kills proper-noun errors (commands §8).
 - Use Parakeet for raw speed on English/European when names don't matter.
-- Use Whisper for broad language coverage; use VibeVoice or Qwen3-ASR `--diarize` when speaker labels matter (diarization caveat in §8: Mac torchcodec broken, use Sortformer on a CUDA box).
+- Use Whisper for broad language coverage; use VibeVoice or Qwen3-ASR `--diarize` when speaker labels matter (diarization caveat in §8: Mac torchcodec broken, use Sortformer on CUDA) — SOLVED 2026-07-24, see commands §8.
 - Gemma 4 (LiteRT-LM) audio is NOT usable on macOS (re-tested 2026-07-23 on 0.14.0, same hang) — do not route audio there; Eloquent app is the GUI fallback.
 
 ## References
