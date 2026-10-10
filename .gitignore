@@ -1,0 +1,16 @@
+venv/
+.venv/
+test-output/
+__pycache__/
+*.pyc
+.DS_Store
+assets/
+*.mp3
+*.wav
+*.aiff
+*.m4a
+*.flac
+*.ogg
+
+# Stale packaged archive with old paths; rebuild before publishing if needed
+*.skill

@@ -1,0 +1,1 @@
+The quick brown fox jumps over the lazy dog. Today we are testing local speech recognition on a laptop. Numbers such as forty two and seventeen should come out cleanly.
