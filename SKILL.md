@@ -29,7 +29,7 @@ description: "Transcribe audio or video files to text locally on Apple Silicon (
 
 ## Scripts
 
-- `scripts/parakeet_to_srt.py`: deterministic Parakeet-to-SRT helper
+- `scripts/parakeet_to_srt.py`: deterministic Parakeet-to-SRT helper; `--words <file.json>` also writes word timings (`{"words":[{text,start,end}]}`, seconds, punctuation kept on its word)
 
 ## Verification
 
