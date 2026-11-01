@@ -1,6 +1,6 @@
 ---
 name: speech-to-text
-description: "Transcribe audio or video files to text locally on Apple Silicon (MLX): Qwen3-ASR, Parakeet, Whisper, Voxtral or VibeVoice, with timestamps (SRT/VTT/JSON), speaker diarization and optional cleanup. Use for meetings, interviews, podcasts."
+description: "Use to transcribe audio or video locally on Apple Silicon: meetings, interviews, podcasts, with timestamps, diarization and cleanup."
 ---
 
 # Speech-to-Text
